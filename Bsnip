@@ -1,0 +1,181 @@
+<!DOCTYPE html>
+<html>
+<head>
+<meta charset="UTF-8">
+<title>BSNIP TRADES</title>
+
+<style>
+body{
+margin:0;
+font-family:Arial;
+background:#0b1020;
+color:white;
+}
+
+.screen{display:none;padding:20px;}
+.active{display:block;}
+
+.card{
+background:#141b2d;
+padding:15px;
+border-radius:12px;
+margin-top:10px;
+}
+
+button{
+width:100%;
+padding:12px;
+border:none;
+border-radius:10px;
+margin-top:10px;
+background:gold;
+font-weight:bold;
+cursor:pointer;
+}
+
+.big{
+font-size:60px;
+text-align:center;
+color:gold;
+}
+
+.status{
+text-align:center;
+margin-top:10px;
+color:#00ff88;
+}
+
+.slide{
+animation:slide 0.4s ease;
+}
+
+@keyframes slide{
+from{transform:translateX(50px);opacity:0;}
+to{transform:translateX(0);opacity:1;}
+}
+
+</style>
+</head>
+
+<body>
+
+<!-- LOGIN -->
+<div id="login" class="screen active">
+
+<div class="card slide">
+
+<h2>BSNIP TRADES</h2>
+
+<button onclick="connectDeriv()">CONNECT TO DERIV</button>
+
+<div class="status" id="status">Not connected</div>
+
+</div>
+
+</div>
+
+<!-- DASHBOARD -->
+<div id="dash" class="screen">
+
+<div class="card slide">
+
+<h2>LIVE DASHBOARD</h2>
+
+<div class="big" id="digit">0</div>
+
+<div class="status" id="conn">✔ Connected to Deriv</div>
+
+<button onclick="startFeed()">START MARKET FEED</button>
+
+</div>
+
+</div>
+
+<script>
+
+let digits = [];
+let ws;
+
+/* =========================
+   DERIV CONNECT FLOW
+========================= */
+
+function connectDeriv(){
+
+document.getElementById("status").innerText =
+"Connecting to Deriv...";
+
+/* redirect to Deriv login */
+let redirect = window.location.origin + "?connected=1";
+
+window.location.href =
+"https://oauth.deriv.com/oauth2/authorize?app_id=1089&redirect_uri="
++ encodeURIComponent(redirect);
+
+}
+
+/* =========================
+   AUTO RETURN FROM DERIV
+========================= */
+
+window.onload = () => {
+
+let url = new URL(window.location.href);
+let connected = url.searchParams.get("connected");
+
+if(connected === "1"){
+
+localStorage.setItem("bsnip_connected","true");
+
+document.getElementById("login").classList.remove("active");
+document.getElementById("dash").classList.add("active");
+
+}
+
+if(localStorage.getItem("bsnip_connected")){
+document.getElementById("login").classList.remove("active");
+document.getElementById("dash").classList.add("active");
+}
+
+};
+
+/* =========================
+   MARKET FEED (SAFE)
+========================= */
+
+function startFeed(){
+
+if(ws && ws.readyState === WebSocket.OPEN) return;
+
+ws = new WebSocket("wss://ws.binaryws.com/websockets/v3?app_id=1089");
+
+ws.onopen = () => {
+ws.send(JSON.stringify({
+ticks: "R_10",
+subscribe: 1
+}));
+};
+
+ws.onmessage = (msg) => {
+
+let data = JSON.parse(msg.data);
+
+if(data.tick){
+
+let d = Number(data.tick.quote.toString().slice(-1));
+digits.push(d);
+
+if(digits.length > 50) digits.shift();
+
+document.getElementById("digit").innerText = d;
+
+}
+
+};
+
+}
+
+</script>
+
+</body>
+</html>
